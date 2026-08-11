@@ -19,20 +19,20 @@ def set_seed(seed):
 def setup_logging(config):
     """ monotonous bookkeeping """
     work_dir = config.system.work_dir
-    # create the work directory if it doesn't already exist
+    # 如果工作目录不存在则创建
     os.makedirs(work_dir, exist_ok=True)
-    # log the args (if any)
+    # 记录参数（如果有）
     with open(os.path.join(work_dir, 'args.txt'), 'w') as f:
         f.write(' '.join(sys.argv))
-    # log the config itself
+    # 记录配置本身
     with open(os.path.join(work_dir, 'config.json'), 'w') as f:
         f.write(json.dumps(config.to_dict(), indent=4))
 
 class CfgNode:
     """ a lightweight configuration class inspired by yacs """
-    # TODO: convert to subclass from a dict like in yacs?
-    # TODO: implement freezing to prevent shooting of own foot
-    # TODO: additional existence/override checks when reading/writing params?
+    # TODO：转成像 yacs 里那样的 dict 子类？
+    # TODO：实现冻结，防止搬起石头砸自己的脚
+    # TODO：读写参数时增加存在性/覆盖检查？
 
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -73,9 +73,9 @@ class CfgNode:
 
             keyval = arg.split('=')
             assert len(keyval) == 2, "expecting each override arg to be of form --arg=value, got %s" % arg
-            key, val = keyval # unpack
+            key, val = keyval # 解包
 
-            # first translate val into a python object
+            # 先把 val 转成 python 对象
             try:
                 val = literal_eval(val)
                 """
@@ -86,18 +86,18 @@ class CfgNode:
             except ValueError:
                 pass
 
-            # find the appropriate object to insert the attribute into
+            # 找到合适的对象来插入属性
             assert key[:2] == '--'
-            key = key[2:] # strip the '--'
+            key = key[2:] # 去掉 '--'
             keys = key.split('.')
             obj = self
             for k in keys[:-1]:
                 obj = getattr(obj, k)
             leaf_key = keys[-1]
 
-            # ensure that this attribute exists
+            # 确保这个属性存在
             assert hasattr(obj, leaf_key), f"{key} is not an attribute that exists in the config"
 
-            # overwrite the attribute
+            # 覆盖该属性
             print("command line overwriting config attribute %s with %s" % (key, val))
             setattr(obj, leaf_key, val)

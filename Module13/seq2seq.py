@@ -61,8 +61,8 @@ class AttnDecoderRNN(nn.Module):
         self.dropout_p = dropout_p
 
         self.embedding = nn.Embedding(self.output_size, self.hidden_size, padding_idx=0)
-        self.attn_w = nn.Linear(2 * self.hidden_size, self.hidden_size)  # Your code here
-        self.attn_v = nn.Linear(self.hidden_size, 1)  # Your code here
+        self.attn_w = nn.Linear(2 * self.hidden_size, self.hidden_size)  # 在这里写你的代码
+        self.attn_v = nn.Linear(self.hidden_size, 1)  # 在这里写你的代码
         self.dropout = nn.Dropout(self.dropout_p)
         self.gru = nn.GRU(self.hidden_size * 2, self.hidden_size)
         self.out = nn.Linear(self.hidden_size, self.output_size)
@@ -73,7 +73,7 @@ class AttnDecoderRNN(nn.Module):
 
         seq_len, _, _ = encoder_outputs.shape
 
-        # Concatenating s_t (1 x B x H) to all h_i (S x B x H)
+        # 把 s_t (1 x B x H) 与所有 h_i (S x B x H) 拼接
         hidden_tile = hidden.repeat(seq_len, 1, 1)
 
         attn_weights = F.softmax(self.attn_v(torch.tanh(
@@ -83,7 +83,7 @@ class AttnDecoderRNN(nn.Module):
 
         output = torch.cat((embedded, contexts), 2)
         
-        # Your code computing attn_weights, context, etc. here
+        # 在这里写你的代码：计算 attn_weights、context 等
 
         output, hidden = self.gru(output, hidden)
 
@@ -151,7 +151,7 @@ def timeSince(since, percent):
 def showPlot(points):
     plt.figure()
     fig, ax = plt.subplots()
-    # this locator puts ticks at regular intervals
+    # 这个 locator 按固定间隔放置刻度
     loc = ticker.MultipleLocator(base=0.2)
     ax.yaxis.set_major_locator(loc)
     plt.plot(points)
@@ -181,19 +181,19 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
     use_teacher_forcing = True if random.random() < teacher_forcing_ratio else False
 
     if use_teacher_forcing:
-        # Teacher forcing: Feed the target as the next input
+        # 教师强制：把目标词作为下一个输入
         for di in range(target_length):
             decoder_output, decoder_hidden, attention_weights = decoder(
                 decoder_input, decoder_hidden, encoder_outputs)
             loss += criterion(decoder_output.squeeze(), target_tensor[di])
-            decoder_input = target_tensor[di]  # Teacher forcing
+            decoder_input = target_tensor[di]  # 教师强制
 
     else:
         for di in range(target_length):
             decoder_output, decoder_hidden, attention_weights = decoder(
                 decoder_input, decoder_hidden, encoder_outputs)
             topv, topi = decoder_output.topk(1)
-            decoder_input = topi.squeeze().detach()  # detach from history as input
+            decoder_input = topi.squeeze().detach()  # 从历史中 detach 作为输入
 
             loss += criterion(decoder_output.squeeze(), target_tensor[di])
             if all(c in {0, EOS_token} for c in decoder_input.numpy()):
@@ -211,8 +211,8 @@ def train(input_tensor, target_tensor, encoder, decoder, encoder_optimizer, deco
 def trainIters(encoder, decoder, n_iters, print_every=1000, plot_every=100, learning_rate=0.01):
     start = time.time()
     plot_losses = []
-    print_loss_total = 0  # Reset every print_every
-    plot_loss_total = 0  # Reset every plot_every
+    print_loss_total = 0  # 每隔 print_every 重置
+    plot_loss_total = 0  # 每隔 plot_every 重置
 
     encoder_optimizer = optim.Adam(encoder.parameters(), lr=learning_rate)
     decoder_optimizer = optim.Adam(decoder.parameters(), lr=learning_rate)

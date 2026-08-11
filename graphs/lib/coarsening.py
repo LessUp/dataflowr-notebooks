@@ -65,48 +65,48 @@ def HEM(W, levels, rid=None):
 
     for _ in range(levels):
 
-        # CHOOSE THE WEIGHTS FOR THE PAIRING
-        # weights = ones(N,1)       # metis weights
-        weights = degree            # graclus weights
-        # weights = supernode_size  # other possibility
+        # 为配对选择权重
+        # weights = ones(N,1)       # metis 权重
+        weights = degree            # graclus 权重
+        # weights = supernode_size  # 另一种可能
         weights = np.array(weights).squeeze()
 
-        # PAIR THE VERTICES AND CONSTRUCT THE ROOT VECTOR
+        # 配对顶点并构造根向量
         idx_row, idx_col, val = scipy.sparse.find(W)
         cc = idx_row
         rr = idx_col
         vv = val
         
-        # TO BE SPEEDUP
+        # 有待加速
         if not (list(cc)==list(np.sort(cc))):
             tmp=cc
             cc=rr
             rr=tmp
 
-        cluster_id = HEM_one_level(cc,rr,vv,rid,weights) # cc is ordered
+        cluster_id = HEM_one_level(cc,rr,vv,rid,weights) # cc 是有序的
         parents.append(cluster_id)
 
-        # COMPUTE THE EDGES WEIGHTS FOR THE NEW GRAPH
+        # 计算新图的边权重
         nrr = cluster_id[rr]
         ncc = cluster_id[cc]
         nvv = vv
         Nnew = cluster_id.max() + 1
-        # CSR is more appropriate: row,val pairs appear multiple times
+        # CSR 更合适：row、val 对会出现多次
         W = scipy.sparse.csr_matrix((nvv,(nrr,ncc)), shape=(Nnew,Nnew))
         W.eliminate_zeros()
         
-        # Add new graph to the list of all coarsened graphs
+        # 把新图加入所有粗化图的列表
         graphs.append(W)
         N, N = W.shape
 
-        # COMPUTE THE DEGREE (OMIT OR NOT SELF LOOPS)
+        # 计算度数（是否省略自环）
         degree = W.sum(axis=0)
         #degree = W.sum(axis=0) - W.diagonal()
 
-        # CHOOSE THE ORDER IN WHICH VERTICES WILL BE VISTED AT THE NEXT PASS
-        #[~, rid]=sort(ss);     # arthur strategy
-        #[~, rid]=sort(supernode_size);    #  thomas strategy
-        #rid=randperm(N);                  #  metis/graclus strategy
+        # 选择下一轮访问顶点的顺序
+        #[~, rid]=sort(ss);     # arthur 策略
+        #[~, rid]=sort(supernode_size);    #  thomas 策略
+        #rid=randperm(N);                  #  metis/graclus 策略
         ss = np.array(W.sum(axis=0)).squeeze()
         rid = np.argsort(ss)
 
@@ -148,11 +148,11 @@ def HEM_one_level(rr,cc,vv,rid,weights):
                     tval = 0.0
                 else:
                     
-                    # First approach
+                    # 第一种方法
                     if 2==1:
                         tval = vv[rs+jj] * (1.0/weights[tid] + 1.0/weights[nid])
                     
-                    # Second approach
+                    # 第二种方法
                     if 1==1:
                         Wij = vv[rs+jj]
                         Wii = vv[rowstart[tid]]
@@ -182,7 +182,7 @@ def compute_perm(parents):
     that the union of two neighbors from layer to layer forms a binary tree.
     """
 
-    # Order of last layer is random (chosen by the clustering algorithm).
+    # 最后一层的顺序是随机的（由聚类算法决定）。
     indices = []
     if len(parents) > 0:
         M_last = max(parents[-1]) + 1
@@ -190,7 +190,7 @@ def compute_perm(parents):
 
     for parent in parents[::-1]:
 
-        # Fake nodes go after real ones.
+        # 假节点排在真节点后面。
         pool_singeltons = len(parent)
 
         indices_layer = []
@@ -198,12 +198,12 @@ def compute_perm(parents):
             indices_node = list(np.where(parent == i)[0])
             assert 0 <= len(indices_node) <= 2
 
-            # Add a node to go with a singelton.
+            # 为孤立节点添加一个配套节点。
             if len(indices_node) is 1:
                 indices_node.append(pool_singeltons)
                 pool_singeltons += 1
 
-            # Add two nodes as children of a singelton in the parent.
+            # 在父层为孤立节点添加两个子节点。
             elif len(indices_node) is 0:
                 indices_node.append(pool_singeltons+0)
                 indices_node.append(pool_singeltons+1)
@@ -212,12 +212,12 @@ def compute_perm(parents):
             indices_layer.extend(indices_node)
         indices.append(indices_layer)
 
-    # Sanity checks.
+    # 合理性检查。
     for i,indices_layer in enumerate(indices):
         M = M_last*2**i
-        # Reduction by 2 at each layer (binary tree).
+        # 每一层缩减 2 倍（二叉树）。
         assert len(indices[0] == M)
-        # The new ordering does not omit an indice.
+        # 新排序没有漏掉任何索引。
         assert sorted(indices_layer) == list(range(M))
 
     return indices[::-1]
@@ -239,13 +239,13 @@ def perm_adjacency(A, indices):
     Mnew = len(indices)
     A = A.tocoo()
 
-    # Add Mnew - M isolated vertices.
+    # 添加 Mnew - M 个孤立顶点。
     rows = scipy.sparse.coo_matrix((Mnew-M,    M), dtype=np.float32)
     cols = scipy.sparse.coo_matrix((Mnew, Mnew-M), dtype=np.float32)
     A = scipy.sparse.vstack([A, rows])
     A = scipy.sparse.hstack([A, cols])
 
-    # Permute the rows and the columns.
+    # 置换行和列。
     perm = np.argsort(indices)
     A.row = np.array(perm)[A.row]
     A.col = np.array(perm)[A.col]
@@ -269,12 +269,12 @@ def perm_data(x, indices):
     assert Mnew >= M
     xnew = np.empty((N, Mnew))
     for i,j in enumerate(indices):
-        # Existing vertex, i.e. real data.
+        # 已有顶点，也就是真实数据。
         if j < M:
             xnew[:,i] = x[:,j]
-        # Fake vertex because of singeltons.
-        # They will stay 0 so that max pooling chooses the singelton.
-        # Or -infty ?
+        # 因孤立节点而存在的假顶点。
+        # 它们保持 0，这样最大池化会选择孤立节点。
+        # 或者 -infty？
         else:
             xnew[:,i] = np.zeros(N)
     return xnew

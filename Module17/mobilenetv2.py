@@ -66,7 +66,7 @@ class MobileNetV2(nn.Module):
         inverted_residual_setting = [
             # t, c, n, s
             [1, 16, 1, 1],
-            [6, 24, 2, 1],  # Stride 2 -> 1 for CIFAR-10
+            [6, 24, 2, 1],  # CIFAR-10 上把 Stride 2 -> 1
             [6, 32, 3, 2],
             [6, 64, 4, 2],
             [6, 96, 3, 1],
@@ -75,15 +75,15 @@ class MobileNetV2(nn.Module):
         ]
         # END
 
-        # building first layer
+        # 构建第一层
         input_channel = int(input_channel * width_mult)
         self.last_channel = int(last_channel * max(1.0, width_mult))
 
-        # CIFAR10: stride 2 -> 1
+        # CIFAR10：stride 2 -> 1
         features = [ConvBNReLU(3, input_channel, stride=1)]
         # END
 
-        # building inverted residual blocks
+        # 构建倒置残差块
         for t, c, n, s in inverted_residual_setting:
             output_channel = int(c * width_mult)
             for i in range(n):
@@ -92,18 +92,18 @@ class MobileNetV2(nn.Module):
                     block(input_channel, output_channel, stride, expand_ratio=t)
                 )
                 input_channel = output_channel
-        # building last several layers
+        # 构建最后几层
         features.append(ConvBNReLU(input_channel, self.last_channel, kernel_size=1))
-        # make it nn.Sequential
+        # 做成 nn.Sequential
         self.features = nn.Sequential(*features)
 
-        # building classifier
+        # 构建分类器
         self.classifier = nn.Sequential(
             nn.Dropout(0.2),
             nn.Linear(self.last_channel, num_classes),
         )
 
-        # weight initialization
+        # 权重初始化
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out")

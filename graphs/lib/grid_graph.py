@@ -29,7 +29,7 @@ def distance_sklearn_metrics(z, k=4, metric='euclidean'):
     """Compute pairwise distances"""
     #d = sklearn.metrics.pairwise.pairwise_distances(z, metric=metric, n_jobs=-2)
     d = sklearn.metrics.pairwise.pairwise_distances(z, metric=metric, n_jobs=1)
-    # k-NN
+    # k 近邻
     idx = np.argsort(d)[:,1:k+1]
     d.sort()
     d = d[:,1:k+1]
@@ -43,20 +43,20 @@ def adjacency(dist, idx):
     assert dist.min() >= 0
     assert dist.max() <= 1
 
-    # Pairwise distances
+    # 两两距离
     sigma2 = np.mean(dist[:,-1])**2
     dist = np.exp(- dist**2 / sigma2)
 
-    # Weight matrix
+    # 权重矩阵
     I = np.arange(0, M).repeat(k)
     J = idx.reshape(M*k)
     V = dist.reshape(M*k)
     W = scipy.sparse.coo_matrix((V, (I, J)), shape=(M, M))
 
-    # No self-connections
+    # 没有自连接
     W.setdiag(0)
 
-    # Undirected graph
+    # 无向图
     bigger = W.T > W
     W = W - W.multiply(bigger) + W.T.multiply(bigger)
 

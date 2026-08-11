@@ -48,7 +48,7 @@ def make_deterministic_fsm(fsm):
     new_fsm : A cleaned-up FSM with integer states and no implicit sink.
     state_mapping : dict mapping old state → new integer state.
     """
-    # --- Collect every state reachable from the transition map ---
+    # --- 收集转移表中所有可达的状态 ---
     all_states = set()
     all_states.add(fsm.initial)
     all_states.update(fsm.finals)
@@ -58,24 +58,24 @@ def make_deterministic_fsm(fsm):
         for symbol_idx, target in transitions.items():
             all_states.add(target)
 
-    # interegular uses an "oblivion" state for dead ends. It may or may not
-    # appear explicitly in the map. We add a dedicated dead state.
+    # interegular 用一个 "oblivion" 状态表示死胡同。它可能出现在
+    # 转移表中，也可能不出现。我们专门加一个死状态。
     dead_state = max(s for s in all_states if isinstance(s, int)) + 1 if all(isinstance(s, int) for s in all_states) else len(all_states)
 
-    # --- Build a contiguous integer mapping ---
-    # Put the initial state first (mapped to 0), then the rest in order.
+    # --- 构建连续的整数映射 ---
+    # 把初始状态放在最前（映射到 0），其余按顺序。
     ordered = [fsm.initial]
     for s in sorted(all_states - {fsm.initial}, key=lambda x: (not isinstance(x, int), str(x))):
         ordered.append(s)
 
     state_mapping = {old: new for new, old in enumerate(ordered)}
-    # Map any state not yet seen (e.g. oblivion) to the dead state
+    # 把任何没见过的状态（例如 oblivion）映射到死状态
     dead_new = len(ordered)
 
     def map_state(s):
         return state_mapping.get(s, dead_new)
 
-    # --- Rebuild the transition map with new state IDs ---
+    # --- 用新的状态 ID 重建转移表 ---
     new_map = {}
     for old_state, transitions in fsm.map.items():
         new_state = map_state(old_state)
@@ -86,9 +86,9 @@ def make_deterministic_fsm(fsm):
     new_initial = map_state(fsm.initial)
     new_finals = frozenset(map_state(s) for s in fsm.finals)
 
-    # Build the new FSM using interegular's FSM class
+    # 用 interegular 的 FSM 类构建新的 FSM
     new_fsm = fsm_module.FSM(
-        alphabet=fsm.alphabet,       # same character → symbol_index mapping
+        alphabet=fsm.alphabet,       # 相同的字符 → symbol_index 映射
         states=set(range(len(ordered))),
         initial=new_initial,
         finals=new_finals,
@@ -148,18 +148,18 @@ def _walk_token_through_fsm(fsm, state, token):
         the token is rejected from this starting state.
     """
     for char in token:
-        # Look up which symbol index this character maps to
+        # 查这个字符映射到哪个符号索引
         if char in fsm.alphabet:
             symbol_idx = fsm.alphabet[char]
         elif fsm_module.anything_else in fsm.alphabet:
             symbol_idx = fsm.alphabet[fsm_module.anything_else]
         else:
-            return None  # character not in alphabet at all
+            return None  # 字符根本不在字母表里
 
-        # Try to transition
+        # 尝试转移
         transitions = fsm.map.get(state, {})
         if symbol_idx not in transitions:
-            return None  # no valid transition → reject
+            return None  # 没有有效转移 → 拒绝
         state = transitions[symbol_idx]
 
     return state
@@ -188,7 +188,7 @@ def create_fsm_index_tokenizer(fsm, tokenizer):
     index : dict[int, dict[int, int]]
         Same as token_fsm.map (for backward compatibility).
     """
-    # Support both a simple list and a HuggingFace-style tokenizer
+    # 同时支持简单列表和 HuggingFace 风格的分词器
     if isinstance(tokenizer, list):
         vocabulary = tokenizer
     else:
@@ -218,7 +218,7 @@ def create_fsm_index_tokenizer(fsm, tokenizer):
 
 if __name__ == "__main__":
 
-    # --- Configuration ---
+    # --- 配置 ---
     regex_pattern = r"([0-9]+)?\.[0-9]+"
     vocabulary = ["a", ".", ".2", "1"]
 
@@ -228,7 +228,7 @@ if __name__ == "__main__":
     print(f"\nRegex:      {regex_pattern}")
     print(f"Vocabulary: {vocabulary}\n")
 
-    # --- Step 1: Parse regex to character-level DFA ---
+    # --- 第 1 步：把正则解析成字符级 DFA ---
     raw_fsm = interegular.parse_pattern(regex_pattern).to_fsm()
     print("── Raw character-level DFA ──")
     print(f"  States:  {raw_fsm.states}")
@@ -238,14 +238,14 @@ if __name__ == "__main__":
     for state, trans in sorted(raw_fsm.map.items(), key=lambda x: str(x[0])):
         print(f"    State {state}: {dict(trans)}")
 
-    # --- Step 2: Clean up ---
+    # --- 第 2 步：清理 ---
     clean_fsm, state_mapping = make_deterministic_fsm(raw_fsm)
     print(f"\n── Cleaned DFA (state mapping: {state_mapping}) ──")
     print(f"  States:  {clean_fsm.states}")
     print(f"  Initial: {clean_fsm.initial}")
     print(f"  Finals:  {clean_fsm.finals}")
 
-    # --- Step 3: Build token-level FSM ---
+    # --- 第 3 步：构建 token 级 FSM ---
     token_fsm, index = create_fsm_index_tokenizer(clean_fsm, vocabulary)
 
     print(f"\n── Token-level FSM ──")
@@ -256,7 +256,7 @@ if __name__ == "__main__":
         for tid, next_s in sorted(token_fsm.map[state].items()):
             print(f"    State {state} --[{tid}: '{vocabulary[tid]}']→ State {next_s}")
 
-    # --- Step 4: Constrained generation using the token FSM ---
+    # --- 第 4 步：用 token FSM 做受限生成 ---
     print(f"\n── Constrained generation ──")
 
     np.random.seed(12349)
@@ -266,7 +266,7 @@ if __name__ == "__main__":
     state = token_fsm.initial
 
     for step in range(7):
-        # Masking is now just a set lookup — no regex needed!
+        # 屏蔽现在只是一次集合查找 — 不需要正则！
         allowed = token_fsm.allowed_token_ids(state)
         mask = np.full(len(vocabulary), -np.inf)
         mask[list(allowed)] = 0.0
